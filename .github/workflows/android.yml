@@ -1,7 +1,7 @@
 name: RDS Vocabulary Game APK Builder
 on:
   push:
-    branches: [main, remake/full-rebuild]
+    branches: [main, remake/full-rebuild, 'feature/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -12,8 +12,6 @@ jobs:
     steps:
       - name: Checkout Project
         uses: actions/checkout@v4
-        with:
-          ref: remake/full-rebuild
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
