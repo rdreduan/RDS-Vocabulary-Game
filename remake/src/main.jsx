@@ -3,7 +3,7 @@ import{createRoot}from'react-dom/client';
 import{initializeApp}from'firebase/app';
 import{getAuth,onAuthStateChanged,signInAnonymously}from'firebase/auth';
 import{getFirestore,doc,setDoc,runTransaction,onSnapshot,updateDoc,serverTimestamp}from'firebase/firestore';
-import{Activity,BookOpen,Bookmark,Check,ChevronRight,Copy,Flame,Gamepad2,Home,Medal,Search,Settings,Sparkles,Swords,Trophy,UserRound,Users,X,Zap}from'lucide-react';
+import{BookOpen,Bookmark,Check,ChevronRight,Copy,Flame,Gamepad2,Home,Medal,Search,Settings,Sparkles,Swords,Trophy,UserRound,Users,X,Zap}from'lucide-react';
 import WORDS from'./words.js';import{firebaseConfig}from'./firebase-config.js';import'./style.css';
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),letters=['A','B','C','D'];
 const shuffle=a=>[...a].sort(()=>Math.random()-.5);
