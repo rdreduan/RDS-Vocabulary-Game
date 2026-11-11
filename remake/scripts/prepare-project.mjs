@@ -1,18 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-
-const project = path.resolve('RDS_Vocabulary_Game_Project');
-const source = path.join(project, 'src/main.jsx');
-const target = path.join(project, 'src/words.js');
-
-if (!fs.existsSync(source)) throw new Error('Original vocabulary source was not found.');
-const code = fs.readFileSync(source, 'utf8');
-const start = code.indexOf('const WORDS=[');
-if (start < 0) throw new Error('Could not locate the original WORDS dataset.');
-const end = code.indexOf('\n];', start);
-if (end < 0) throw new Error('Could not locate the end of the original WORDS dataset.');
-const literal = code.slice(start + 'const WORDS='.length, end + 2);
-new Function('return ' + literal)();
-fs.mkdirSync(path.dirname(target), { recursive: true });
-fs.writeFileSync(target, 'const WORDS = ' + literal + ';\nexport default WORDS;\n', 'utf8');
-console.log('Preserved original vocabulary entries:', new Function('return ' + literal)().length);
+const project=path.resolve('RDS_Vocabulary_Game_Project');
+const source=path.join(project,'src/main.jsx');
+if(!fs.existsSync(source)) throw new Error('Original source missing.');
+const code=fs.readFileSync(source,'utf8');
+const a=code.indexOf('const WORDS=['), b=code.indexOf('\n];',a);
+if(a<0||b<0) throw new Error('Original vocabulary array missing.');
+const literal=code.slice(a+'const WORDS='.length,b+2);
+const words=new Function('return '+literal)();
+if(!Array.isArray(words)||words.length<100) throw new Error('Vocabulary validation failed.');
+fs.writeFileSync(path.join(project,'src/words.js'),'const WORDS = '+literal+';\nexport default WORDS;\n');
+const c=code.indexOf('const firebaseConfig ='), d=code.indexOf('{',c), e=code.indexOf('\n};',d);
+if(c<0||d<0||e<0) throw new Error('Firebase config missing.');
+const config=new Function('return ('+code.slice(d,e+2)+')')();
+for(const k of ['apiKey','authDomain','projectId','appId']) if(!config[k]||String(config[k]).startsWith('YOUR_')) throw new Error('Firebase '+k+' missing.');
+fs.writeFileSync(path.join(project,'src/firebase-config.js'),'export const firebaseConfig = '+JSON.stringify(config,null,2)+';\n');
+console.log('Validated and preserved '+words.length+' vocabulary entries and Firebase web config.');
