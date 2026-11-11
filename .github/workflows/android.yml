@@ -1,107 +1,65 @@
-
 name: RDS Vocabulary Game APK Builder
-
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   android:
     name: Build RDS Android APK
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Download repository
       - name: Checkout Project
         uses: actions/checkout@v4
-
-      # 2. Setup Node.js
+        with:
+          ref: remake/full-rebuild
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      # 3. Setup Java 21
+          cache: npm
+          cache-dependency-path: RDS_Vocabulary_Game_Project/package-lock.json
       - name: Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
-
-      # 4. Extract original project
-      - name: Extract Project ZIP
+      - name: Extract Original Project
         run: |
           unzip -q RDS_Vocabulary_Game_Project.zip
-          test -f RDS_Vocabulary_Game_Project/package.json
-          test -f RDS_Vocabulary_Game_Project/capacitor.config.json
-
-      # 5. Install project dependencies
+          test -f RDS_Vocabulary_Game_Project/src/main.jsx
+      - name: Install Rebuilt App
+        run: |
+          cp -R remake/. RDS_Vocabulary_Game_Project/
+          cp remake/package.json RDS_Vocabulary_Game_Project/package.json
+          cp remake/capacitor.config.json RDS_Vocabulary_Game_Project/capacitor.config.json
+          cp remake/firestore.rules RDS_Vocabulary_Game_Project/firestore.rules
       - name: Install Dependencies
         working-directory: RDS_Vocabulary_Game_Project
-        run: |
-          npm install
-          npm pkg set scripts.build="vite build"
-
-      # 6. Install Capacitor
-      - name: Install Capacitor Android
+        run: npm install
+      - name: Preserve Original Vocabulary and Firebase Config
         working-directory: RDS_Vocabulary_Game_Project
-        run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-
-      # 7. Build website
-      - name: Build Website
+        run: node scripts/prepare-project.mjs
+      - name: Build Web App
         working-directory: RDS_Vocabulary_Game_Project
         run: npm run build
-
-      # 8. Create Android platform
       - name: Add Android Platform
         working-directory: RDS_Vocabulary_Game_Project
         run: npx cap add android
-
-      # 9. Sync Android project
       - name: Sync Android
         working-directory: RDS_Vocabulary_Game_Project
         run: npx cap sync android
-
-      # 10. Fix Kotlin duplicate classes
-      - name: Fix Kotlin Dependencies
-        working-directory: RDS_Vocabulary_Game_Project/android
-        run: |
-          cat >> build.gradle <<'EOF'
-
-          allprojects {
-              configurations.configureEach {
-                  exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
-                  exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
-
-                  resolutionStrategy.force(
-                      'org.jetbrains.kotlin:kotlin-stdlib:1.8.22'
-                  )
-              }
-          }
-          EOF
-
-      # 11. Build Android APK
-      - name: Build APK
+      - name: Build Debug APK
         working-directory: RDS_Vocabulary_Game_Project/android
         run: |
           chmod +x gradlew
-          ./gradlew clean assembleDebug
-
-      # 12. Rename APK
+          ./gradlew clean assembleDebug --stacktrace
       - name: Rename APK
         run: |
-          cp RDS_Vocabulary_Game_Project/android/app/build/outputs/apk/debug/app-debug.apk \
-          RDS-Vocabulary-Game.apk
-
-      # 13. Upload final APK
+          cp RDS_Vocabulary_Game_Project/android/app/build/outputs/apk/debug/app-debug.apk RDS-Vocabulary-Game.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: RDS-Vocabulary-Game
           path: RDS-Vocabulary-Game.apk
           if-no-files-found: error
-          retention-days: 7
-          
+          retention-days: 14
