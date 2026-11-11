@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 const project=path.resolve('RDS_Vocabulary_Game_Project');
-const source=path.join(project,'src/main.jsx');
+const source=path.join(project,'original-main.jsx');
 if(!fs.existsSync(source)) throw new Error('Original source missing.');
 const code=fs.readFileSync(source,'utf8');
 const a=code.indexOf('const WORDS=['), b=code.indexOf('\n];',a);
