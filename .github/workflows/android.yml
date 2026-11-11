@@ -29,6 +29,7 @@ jobs:
         run: |
           unzip -q RDS_Vocabulary_Game_Project.zip
           test -f RDS_Vocabulary_Game_Project/src/main.jsx
+          cp RDS_Vocabulary_Game_Project/src/main.jsx RDS_Vocabulary_Game_Project/original-main.jsx
       - name: Install Rebuilt App
         run: |
           cp -R remake/. RDS_Vocabulary_Game_Project/
