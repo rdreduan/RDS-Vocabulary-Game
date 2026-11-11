@@ -1,0 +1,9 @@
+{
+  "appId": "com.rds.vocabularygame",
+  "appName": "RDS Vocabulary Game",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}
