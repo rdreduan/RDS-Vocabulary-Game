@@ -1,7 +1,7 @@
 name: RDS Vocabulary Game APK Builder
 on:
   push:
-    branches: [remake/full-rebuild]
+    branches: [main, remake/full-rebuild]
   workflow_dispatch:
 permissions:
   contents: read
