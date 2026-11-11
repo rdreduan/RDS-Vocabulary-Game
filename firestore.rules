@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{roomId} {
+      allow read: if true;
+      // Prototype rules: tighten before public launch (membership/host validation).
+      allow create: if request.auth != null;
+      allow update: if request.auth != null;
+    }
+  }
+}
