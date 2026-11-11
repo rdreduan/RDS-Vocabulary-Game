@@ -1,0 +1,64 @@
+
+name: RDS Vocabulary Game APK Builder
+
+on:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Project
+        run: |
+          unzip -q RDS_Vocabulary_Game_Project.zip
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install Dependencies
+        working-directory: RDS_Vocabulary_Game_Project
+        run: npm install
+
+      - name: Fix Build Script
+        working-directory: RDS_Vocabulary_Game_Project
+        run: npm pkg set scripts.build="vite build"
+
+      - name: Install Capacitor Android
+        working-directory: RDS_Vocabulary_Game_Project
+        run: npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Build Website
+        working-directory: RDS_Vocabulary_Game_Project
+        run: npm run build
+
+      - name: Add Android Platform
+        working-directory: RDS_Vocabulary_Game_Project
+        run: npx cap add android
+
+      - name: Sync Android
+        working-directory: RDS_Vocabulary_Game_Project
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: RDS_Vocabulary_Game_Project/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RDS-Vocabulary-Game-APK
+          path: RDS_Vocabulary_Game_Project/android/app/build/outputs/apk/debug/app-debug.apk
