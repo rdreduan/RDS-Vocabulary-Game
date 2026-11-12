@@ -173,7 +173,6 @@ service cloud.firestore {
         && request.resource.data.roomCode is string
         && request.resource.data.rounds is int
         && request.resource.data.rounds >= 1
-        && matchId == request.resource.data.roomCode + '-' + string(request.resource.data.rounds)
         && sourceRoom().data.status == 'finished'
         && sourceRoom().data.code == request.resource.data.roomCode
         && sourceRoom().data.round == request.resource.data.rounds
