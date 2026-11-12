@@ -115,6 +115,28 @@ test('waiting rooms can be joined once and are hidden after the match starts', a
     endsAt: Date.now() + 15000
   }));
   await assertFails(getDoc(doc(outsider, 'rooms/ABC123')));
+
+  // A participant may not rewrite the question, answer, or the other player's score.
+  await assertFails(updateDoc(doc(guest, 'rooms/ABC123'), { answer: 'অন্ধকার' }));
+  await assertFails(updateDoc(doc(guest, 'rooms/ABC123'), {
+    answers: { guest: { option: 'উজ্জ্বল', correct: true } },
+    players: [player('host', 'Host'), { ...player('guest', 'Guest'), score: 999, correct: 99 }],
+    status: 'playing'
+  }));
+
+  // A legitimate answer can update only the submitting player's derived score.
+  await assertSucceeds(updateDoc(doc(guest, 'rooms/ABC123'), {
+    answers: { guest: { option: 'উজ্জ্বল', correct: true } },
+    players: [player('host', 'Host'), { ...player('guest', 'Guest'), score: 10, correct: 1 }],
+    status: 'playing'
+  }));
+  await assertSucceeds(updateDoc(room, {
+    answers: { guest: { option: 'উজ্জ্বল', correct: true }, host: { option: 'উজ্জ্বল', correct: true } },
+    players: [{ ...player('host', 'Host'), score: 10, correct: 1 }, { ...player('guest', 'Guest'), score: 10, correct: 1 }],
+    status: 'round-complete'
+  }));
+  await assertSucceeds(updateDoc(room, { status: 'finished', finishedAt: Date.now() }));
+  await assertFails(updateDoc(doc(guest, 'rooms/ABC123'), { status: 'finished' }));
 });
 
 test('match history is readable only by listed participants', async () => {
