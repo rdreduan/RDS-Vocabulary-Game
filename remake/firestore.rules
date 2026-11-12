@@ -201,18 +201,44 @@ service cloud.firestore {
       }
     }
 
+    function validNonNegativeInt(value) {
+      return value is int && value >= 0;
+    }
+
+    function validUserProfile(data) {
+      return data.keys().hasOnly([
+        'savedWords', 'displayName',
+        'xp', 'totalCorrect', 'totalAnswered', 'currentStreak',
+        'bestStreak', 'lastActiveDay', 'dailyKey', 'dailyDone',
+        'dailyGoal', 'achievements', 'updatedAt',
+        'soloScore', 'soloTotal', 'soloCorrect',
+        'ieltsWritingDraft', 'ieltsWritingUpdatedAt'
+      ])
+        && (!data.keys().hasAny(['savedWords']) || data.savedWords is list)
+        && (!data.keys().hasAny(['displayName']) || (data.displayName is string && data.displayName.size() <= 20))
+        && (!data.keys().hasAny(['xp']) || validNonNegativeInt(data.xp))
+        && (!data.keys().hasAny(['totalCorrect']) || validNonNegativeInt(data.totalCorrect))
+        && (!data.keys().hasAny(['totalAnswered']) || validNonNegativeInt(data.totalAnswered))
+        && (!data.keys().hasAny(['currentStreak']) || validNonNegativeInt(data.currentStreak))
+        && (!data.keys().hasAny(['bestStreak']) || validNonNegativeInt(data.bestStreak))
+        && (!data.keys().hasAny(['lastActiveDay']) || (data.lastActiveDay is string && data.lastActiveDay.size() <= 10))
+        && (!data.keys().hasAny(['dailyKey']) || (data.dailyKey is string && data.dailyKey.size() <= 10))
+        && (!data.keys().hasAny(['dailyDone']) || validNonNegativeInt(data.dailyDone))
+        && (!data.keys().hasAny(['dailyGoal']) || (data.dailyGoal is int && data.dailyGoal >= 1 && data.dailyGoal <= 100))
+        && (!data.keys().hasAny(['achievements']) || (data.achievements is list && data.achievements.size() <= 50))
+        && (!data.keys().hasAny(['updatedAt']) || validNonNegativeInt(data.updatedAt))
+        && (!data.keys().hasAny(['soloScore']) || validNonNegativeInt(data.soloScore))
+        && (!data.keys().hasAny(['soloTotal']) || validNonNegativeInt(data.soloTotal))
+        && (!data.keys().hasAny(['soloCorrect']) || validNonNegativeInt(data.soloCorrect))
+        && (!data.keys().hasAny(['ieltsWritingDraft']) || (data.ieltsWritingDraft is string && data.ieltsWritingDraft.size() <= 20000))
+        && (!data.keys().hasAny(['ieltsWritingUpdatedAt']) || validNonNegativeInt(data.ieltsWritingUpdatedAt));
+    }
+
     match /users/{userId} {
       allow read, delete: if signedIn() && request.auth.uid == userId;
       allow create, update: if signedIn()
         && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly([
-          'savedWords', 'displayName',
-          'xp', 'totalCorrect', 'totalAnswered', 'currentStreak',
-          'bestStreak', 'lastActiveDay', 'dailyKey', 'dailyDone',
-          'dailyGoal', 'achievements', 'updatedAt',
-          'soloScore', 'soloTotal', 'soloCorrect',
-          'ieltsWritingDraft', 'ieltsWritingUpdatedAt'
-        ]);
+        && validUserProfile(request.resource.data);
       match /learningEvents/{eventId} {
         allow read: if signedIn() && request.auth.uid == userId;
         allow create: if signedIn()
