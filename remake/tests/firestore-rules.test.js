@@ -168,34 +168,74 @@ test('waiting rooms can be joined once and are hidden after the match starts', a
   await assertFails(updateDoc(doc(guest, 'rooms/ABC123'), { status: 'finished' }));
 });
 
-test('match history is readable only by listed participants', async () => {
+test('match history must match a finished room and remain participant-only', async () => {
   const alice = env.authenticatedContext('alice').firestore();
   const bob = env.authenticatedContext('bob').firestore();
   const outsider = env.authenticatedContext('outsider').firestore();
+  const room = doc(alice, 'rooms/MATCH1');
+  await assertSucceeds(setDoc(room, {
+    code: 'MATCH1', host: 'alice', status: 'waiting', round: 1,
+    question: 'bright', options: ['উজ্জ্বল', 'অন্ধকার'], answer: 'উজ্জ্বল',
+    players: [player('alice', 'Alice')], answers: {}, createdAt: serverTimestamp()
+  }));
+  await assertSucceeds(updateDoc(doc(bob, 'rooms/MATCH1'), {
+    players: [player('alice', 'Alice'), player('bob', 'Bob')]
+  }));
+  await assertSucceeds(updateDoc(room, {
+    status: 'playing', round: 1, answers: {}, endsAt: Date.now() + 15000
+  }));
+  await assertSucceeds(updateDoc(doc(bob, 'rooms/MATCH1'), {
+    answers: { bob: { option: 'উজ্জ্বল', correct: true } },
+    players: [player('alice', 'Alice'), { ...player('bob', 'Bob'), score: 10, correct: 1 }],
+    status: 'playing'
+  }));
+  await assertSucceeds(updateDoc(room, {
+    answers: {
+      bob: { option: 'উজ্জ্বল', correct: true },
+      alice: { option: 'উজ্জ্বল', correct: true }
+    },
+    players: [
+      { ...player('alice', 'Alice'), score: 10, correct: 1 },
+      { ...player('bob', 'Bob'), score: 10, correct: 1 }
+    ],
+    status: 'round-complete'
+  }));
+  await assertSucceeds(updateDoc(room, { status: 'finished', finishedAt: Date.now() }));
+
   const match = {
-    roomCode: 'ABC123',
-    rounds: 3,
-    players: [player('alice'), player('bob')],
+    roomCode: 'MATCH1',
+    rounds: 1,
+    players: [
+      { ...player('alice', 'Alice'), score: 10, correct: 1 },
+      { ...player('bob', 'Bob'), score: 10, correct: 1 }
+    ],
     playerIds: ['alice', 'bob'],
-    winnerUid: 'alice',
+    winnerUid: null,
     completedAt: Date.now()
   };
-  await assertSucceeds(setDoc(doc(alice, 'matches/ABC123-3'), match));
-  await assertSucceeds(getDoc(doc(bob, 'matches/ABC123-3')));
-  await assertFails(getDoc(doc(outsider, 'matches/ABC123-3')));
-  await assertFails(updateDoc(doc(alice, 'matches/ABC123-3'), { winnerUid: 'bob' }));
+  await assertSucceeds(setDoc(doc(alice, 'matches/MATCH1-1'), match));
+  await assertSucceeds(getDoc(doc(bob, 'matches/MATCH1-1')));
+  await assertFails(getDoc(doc(outsider, 'matches/MATCH1-1')));
+  await assertFails(updateDoc(doc(alice, 'matches/MATCH1-1'), { winnerUid: 'bob' }));
+  await assertFails(setDoc(doc(alice, 'matches/FORGED-1'), { ...match, roomCode: 'FORGED' }));
+
+  const marker = doc(alice, 'leaderboard/alice/matches/MATCH1-1');
+  await assertSucceeds(setDoc(marker, { matchId: 'MATCH1-1', completedAt: Date.now() }));
+  await assertFails(updateDoc(marker, { completedAt: Date.now() + 1 }));
 });
 
-test('leaderboard writes are restricted to the signed-in owner and schema', async () => {
+test('leaderboard writes enforce owner, integer bounds, and wins not exceeding matches', async () => {
   const alice = env.authenticatedContext('alice').firestore();
   const bob = env.authenticatedContext('bob').firestore();
-  await assertSucceeds(setDoc(doc(alice, 'leaderboard/alice'), {
+  const ref = doc(alice, 'leaderboard/alice');
+  await assertSucceeds(setDoc(ref, {
     uid: 'alice', name: 'Alice', totalScore: 30, wins: 1, matches: 2, updatedAt: Date.now()
   }));
   await assertFails(setDoc(doc(bob, 'leaderboard/alice'), {
     uid: 'alice', name: 'Alice', totalScore: 9999, wins: 99, matches: 99, updatedAt: Date.now()
   }));
-  await assertFails(setDoc(doc(alice, 'leaderboard/alice'), {
-    uid: 'alice', name: 'Alice', totalScore: '9999', wins: 1, matches: 2, updatedAt: Date.now()
-  }));
+  await assertFails(updateDoc(ref, { totalScore: -1 }));
+  await assertFails(updateDoc(ref, { wins: 1.5 }));
+  await assertFails(updateDoc(ref, { wins: 4 }));
+  await assertFails(updateDoc(ref, { totalScore: '9999' }));
 });
