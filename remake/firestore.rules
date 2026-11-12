@@ -28,6 +28,88 @@ service cloud.firestore {
         && player.wrong is number;
     }
 
+    function validPlayerProgress(oldPlayer, newPlayer, submittedAnswer, expectedAnswer) {
+      return newPlayer.diff(oldPlayer).affectedKeys().hasOnly(['score', 'correct', 'wrong'])
+        && newPlayer.uid == oldPlayer.uid
+        && newPlayer.name == oldPlayer.name
+        && newPlayer.score == oldPlayer.score + (submittedAnswer.correct ? 10 : 0)
+        && newPlayer.correct == oldPlayer.correct + (submittedAnswer.correct ? 1 : 0)
+        && newPlayer.wrong == oldPlayer.wrong + (submittedAnswer.correct ? 0 : 1)
+        && submittedAnswer.option is string
+        && submittedAnswer.correct is bool
+        && submittedAnswer.correct == (submittedAnswer.option == expectedAnswer);
+    }
+
+    function isHostRoundUpdate() {
+      return signedIn()
+        && resource.data.host == request.auth.uid
+        && isMember(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'round', 'question', 'options', 'answer',
+          'answers', 'endsAt', 'finishedAt'
+        ])
+        && request.resource.data.host == resource.data.host
+        && request.resource.data.code == resource.data.code
+        && request.resource.data.players == resource.data.players
+        && request.resource.data.answers is map
+        && (
+          (
+            resource.data.status == 'waiting'
+            && request.resource.data.status == 'playing'
+            && resource.data.players.size() == 2
+            && request.resource.data.round == 1
+            && request.resource.data.answers.size() == 0
+          )
+          || (
+            resource.data.status == 'round-complete'
+            && request.resource.data.status == 'playing'
+            && request.resource.data.round == resource.data.round + 1
+            && request.resource.data.answers.size() == 0
+          )
+          || (
+            resource.data.status == 'round-complete'
+            && request.resource.data.status == 'finished'
+            && request.resource.data.round == resource.data.round
+          )
+        );
+    }
+
+    function isValidPlayerAnswerUpdate() {
+      let answer = request.resource.data.answers[request.auth.uid];
+      return signedIn()
+        && resource.data.status == 'playing'
+        && resource.data.players.size() == 2
+        && isMember(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'answers', 'players', 'status'
+        ])
+        && request.resource.data.answers is map
+        && !resource.data.answers.keys().hasAny([request.auth.uid])
+        && request.resource.data.answers.diff(resource.data.answers).affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.answers.keys().size() == resource.data.answers.keys().size() + 1
+        && answer is map
+        && answer.keys().hasOnly(['option', 'correct'])
+        && request.resource.data.players is list
+        && request.resource.data.players.size() == 2
+        && (
+          (
+            resource.data.players[0].uid == request.auth.uid
+            && validPlayerProgress(resource.data.players[0], request.resource.data.players[0], answer, resource.data.answer)
+            && request.resource.data.players[1] == resource.data.players[1]
+          )
+          || (
+            resource.data.players[1].uid == request.auth.uid
+            && validPlayerProgress(resource.data.players[1], request.resource.data.players[1], answer, resource.data.answer)
+            && request.resource.data.players[0] == resource.data.players[0]
+          )
+        )
+        && request.resource.data.status == (
+          request.resource.data.answers.keys().size() >= request.resource.data.players.size()
+            ? 'round-complete'
+            : 'playing'
+        );
+    }
+
     match /rooms/{roomId} {
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
@@ -42,8 +124,6 @@ service cloud.firestore {
         && validPlayer(request.resource.data.players[0])
         && request.resource.data.players[0].uid == request.auth.uid;
 
-      // A room document can only be fetched by its code. Firestore Rules cannot
-      // hide fields within a document, so the waiting-room code is the access token.
       allow get: if signedIn()
         && resource.data.code == roomId
         && (
@@ -56,11 +136,9 @@ service cloud.firestore {
         );
       allow list: if false;
 
-      // Joining is limited to adding exactly one authenticated second player.
-      // Existing participants retain the current battle update flow; see the audit
-      // report for the client-trusted scoring limitation.
       allow update: if signedIn() && (
-        isMember(resource.data)
+        isHostRoundUpdate()
+        || isValidPlayerAnswerUpdate()
         || (
           resource.data.code == roomId
           && resource.data.status == 'waiting'
