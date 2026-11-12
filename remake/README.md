@@ -15,9 +15,9 @@ React + Vite learning app packaged for Android with Capacitor.
 - Original vocabulary and Firebase web configuration extracted from the original project source ZIP during CI
 
 ## Firebase setup
-1. In Firebase Console, enable **Authentication → Sign-in method → Anonymous**.
+1. In Firebase Console, enable **Authentication → Sign-in method → Anonymous** and **Email/Password**. Guest sessions can be upgraded to an email/password account from My Profile; sign in with that account on another device to load the same cloud progress.
 2. Create a Cloud Firestore database.
-3. Publish the rules in `firestore.rules` after each rules update. The Learning Academy uses owner-only `users/{uid}` documents and `learningEvents` subcollection records.
+3. Publish the rules in `firestore.rules` after each rules update. User profile documents are owner-only, match records are participant-only, and active battle rooms are readable only by participants (a waiting room can be read by a user who has its invite code).
 4. Keep service-account credentials out of the Android/client app. The Firebase web config is public client configuration, not a server secret.
 
 ## Local build
