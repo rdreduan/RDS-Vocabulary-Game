@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState} from 'react';
+import React,{useEffect,useMemo,useRef,useState} from 'react';
 import {Capacitor} from '@capacitor/core';
 import {TextToSpeech} from '@capacitor-community/text-to-speech';
 import {SpeechRecognition} from '@capacitor-community/speech-recognition';
