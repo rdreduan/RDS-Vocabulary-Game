@@ -65,6 +65,35 @@ test('users can read and write only their own profile', async () => {
   await assertFails(setDoc(doc(bob, 'users/alice'), { xp: 999999 }));
 });
 
+test('user profiles reject malformed progress values and unexpected fields', async () => {
+  const alice = env.authenticatedContext('alice').firestore();
+  const profile = doc(alice, 'users/alice');
+
+  await assertSucceeds(setDoc(profile, {
+    displayName: 'Alice',
+    savedWords: [{ word: 'abandon', meaning: 'ত্যাগ করা' }],
+    xp: 10,
+    totalCorrect: 1,
+    totalAnswered: 1,
+    currentStreak: 1,
+    bestStreak: 1,
+    dailyKey: '2026-11-13',
+    dailyDone: 1,
+    dailyGoal: 10,
+    achievements: ['first'],
+    soloScore: 10,
+    soloTotal: 1,
+    soloCorrect: 1,
+    updatedAt: Date.now()
+  }));
+
+  await assertFails(updateDoc(profile, { xp: -1 }));
+  await assertFails(updateDoc(profile, { dailyGoal: 0 }));
+  await assertFails(updateDoc(profile, { displayName: 'A'.repeat(21) }));
+  await assertFails(updateDoc(profile, { savedWords: 'not-an-array' }));
+  await assertFails(updateDoc(profile, { isAdmin: true }));
+});
+
 test('learning events are owner-readable, create-only, and schema checked', async () => {
   const alice = env.authenticatedContext('alice').firestore();
   const bob = env.authenticatedContext('bob').firestore();
