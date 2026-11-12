@@ -1,0 +1,38 @@
+name: Firestore Rules Tests
+
+on:
+  pull_request:
+    paths:
+      - 'remake/firestore.rules'
+      - 'remake/firebase.json'
+      - 'remake/tests/**'
+      - 'remake/package.json'
+      - '.github/workflows/firestore-rules.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firestore-rules:
+    name: Firestore Rules Emulator Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: remake
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install dependencies
+        run: npm install
+      - name: Run Firestore Rules tests
+        run: npx --yes firebase-tools@14.22.0 emulators:exec --only firestore --project demo-rds-vocabulary-game "npm run test:rules"
